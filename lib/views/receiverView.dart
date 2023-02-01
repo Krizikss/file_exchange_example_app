@@ -1,8 +1,12 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'dart:async';
-import 'package:wifi_info_plugin_plus/wifi_info_plugin_plus.dart';
+import 'package:qr_code_bootstrap_channel/qr_code_bootstrap_channel.dart';
+import 'package:venice_core/channels/abstractions/bootstrap_channel.dart';
+import 'package:channel_multiplexed_scheduler/receiver/receiver.dart';
+import 'package:file_exchange_example_app/channelTypes/bootstrap_channel_type.dart';
+import 'package:file_exchange_example_app/channelTypes/data_channel_type.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:wifi_data_channel/wifi_data_channel.dart';
 
 class ReceiverView extends StatefulWidget {
   const ReceiverView({Key? key}) : super(key: key);
@@ -12,65 +16,90 @@ class ReceiverView extends StatefulWidget {
 }
 
 class _ReceiverViewState extends State<ReceiverView> {
-  WifiInfoWrapper? _wifiObject;
-  String? _ipAddress;
-  final _textController = TextEditingController();
+  BootstrapChannelType _bootstrapChannelType = BootstrapChannelType.qrCode;
+  final List<DataChannelType> _dataChannelTypes = [];
 
-  @override
-  void initState() {
-    super.initState();
-    initPlatformState();
-    _textController.addListener(_handleText);
+  final textController = TextEditingController();
+
+  void _setBootstrapChannelType(BootstrapChannelType type) {
+    setState(() {
+      _bootstrapChannelType = type;
+    });
   }
 
-  Future<void> initPlatformState() async {
-    WifiInfoWrapper? wifiObject = WifiInfoWrapper();
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    try {
-      wifiObject = await  WifiInfoPlugin.wifiDetails;
-
-    }
-    on PlatformException{}
-    if (!mounted) return;
-
+  void _toggleDataChannelType(DataChannelType type) {
     setState(() {
-
-      _wifiObject = wifiObject;
+      if (_dataChannelTypes.contains(type)) {
+        _dataChannelTypes.remove(type);
+      } else {
+        _dataChannelTypes.add(type);
+      }
     });
   }
 
   @override
+  void initState() {
+    super.initState();
+    textController.addListener(_handleText);
+  }
+
+  @override
   void dispose() {
-    _textController.dispose();
+    textController.dispose();
     super.dispose();
   }
 
   _handleText() {
-    debugPrint("*********** The string received : ${_textController.text}");
+    debugPrint("*********** The string received : ${textController.text}");
   }
 
 
   @override
   Widget build(BuildContext context) {
-    _ipAddress = _wifiObject != null ? _wifiObject!.ipAddress.toString() : "...";
-    debugPrint("*********** Receiver IP : $_ipAddress");
     return Scaffold(
       body: Column(
         children: <Widget>[
           Container(
             margin: const EdgeInsets.only(top: 50),
             child: TextField(
-              controller: _textController,
+              controller: textController,
             ),
           ),
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 30),
             child: const Divider(),
           ),
+          Container(
+            margin: const EdgeInsets.all(20),
+            child: const Text(
+              'Select bootstrap channel:',
+            ),
+          ),
+          ListTile(
+            title: const Text('QR code'),
+            onTap: () => _setBootstrapChannelType(BootstrapChannelType.qrCode),
+            trailing: Checkbox(
+                value: _bootstrapChannelType == BootstrapChannelType.qrCode,
+                onChanged: (v) => _setBootstrapChannelType(BootstrapChannelType.qrCode)),
+          ),
+          Container(
+            margin: const EdgeInsets.all(20),
+            child: const Text(
+              'Select data channels (at least one):',
+            ),
+          ),
+          ListTile(
+            title: const Text('Wi-Fi'),
+            onTap: () => _toggleDataChannelType(DataChannelType.wifi),
+            trailing: Checkbox(
+                value: _dataChannelTypes.contains(DataChannelType.wifi),
+                onChanged: (v) => _toggleDataChannelType(DataChannelType.wifi)
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: ElevatedButton(
-        onPressed: _startReceivingData,
+        onPressed: _canReceiveData() ? () => _startReceivingData(context) : null,
         style: ButtonStyle(
             shape: MaterialStateProperty.all<RoundedRectangleBorder>(
                 const RoundedRectangleBorder( borderRadius: BorderRadius.zero )
@@ -84,29 +113,31 @@ class _ReceiverViewState extends State<ReceiverView> {
     );
   }
 
-
-  void _startReceivingData() async {
-    debugPrint("*********** _startReceivingData()");
-    final server = await ServerSocket.bind(_ipAddress, 4567);
-    server.listen((client) {
-      handleClient(client);
-    });
+  bool _canReceiveData() {
+    return textController.text.isEmpty && _dataChannelTypes.isNotEmpty;
   }
 
-  void handleClient(Socket client) async{
-    debugPrint('Connection from ${client.remoteAddress.address}:${client.remotePort}');
-    client.listen((Uint8List data) async {
-      await Future.delayed(const Duration(seconds: 1));
-      final request = String.fromCharCodes(data);
-      if (request.isNotEmpty) {
-        _textController.text = request;
+  Future<void> _startReceivingData(BuildContext context) async {
+    if (textController.text.isNotEmpty) {
+      Fluttertoast.showToast(
+          msg: "Select a destination directory before starting file reception."
+      );
+      return;
+    }
+    Fluttertoast.showToast(
+        msg: "Starting data reception..."
+    );
+    BootstrapChannel bootstrapChannel = QrCodeBootstrapChannel(context);
+    Receiver receiver = Receiver(bootstrapChannel);
+    for (var type in _dataChannelTypes) {
+      switch(type) {
+        case DataChannelType.wifi:
+          receiver.useChannel( WifiDataChannel("wifi_data_channel") );
+          break;
       }
-      else{
-        debugPrint("*********** data empty");
-      }
-      client.close();
-    });
+    }
+    await receiver.receiveData(textController);
+    Fluttertoast.showToast( msg: "File successfully received!" );
   }
-
 
 }
