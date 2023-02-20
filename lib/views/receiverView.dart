@@ -120,7 +120,7 @@ class _ReceiverViewState extends State<ReceiverView> {
   Future<void> _startReceivingData(BuildContext context) async {
     if (textController.text.isNotEmpty) {
       Fluttertoast.showToast(
-          msg: "Select a destination directory before starting file reception."
+          msg: "The textfield needs to be empty before starting data reception."
       );
       return;
     }

@@ -69,7 +69,7 @@ class _SenderViewState extends State<SenderView> {
       body: Column(
         children: <Widget>[
           Container(
-            margin: const EdgeInsets.only(top: 50),
+            margin: const EdgeInsets.all(20),
             child: TextField(
               controller: _textController,
             ),
@@ -129,7 +129,7 @@ class _SenderViewState extends State<SenderView> {
   Future<void> _startSendingData(BuildContext context) async {
     if(_textController.text.isEmpty) {
       Fluttertoast.showToast(
-          msg: "Select a file before starting file sending."
+          msg: "Type a String before starting the sending."
       );
       return;
     }
@@ -142,6 +142,7 @@ class _SenderViewState extends State<SenderView> {
           break;
       }
     }
+    //Adapt the chunksize to the size of the String
     await scheduler.sendData(_textController.text, 1);
     Fluttertoast.showToast( msg: "File successfully sent!" );
   }
