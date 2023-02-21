@@ -60,7 +60,7 @@ class _SenderViewState extends State<SenderView> {
   }
 
   _handleText() {
-    debugPrint("*********** The string to send : ${_textController.text}");
+    debugPrint("[TextController] The string to send : ${_textController.text}");
   }
 
   @override

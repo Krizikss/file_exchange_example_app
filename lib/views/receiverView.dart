@@ -50,7 +50,7 @@ class _ReceiverViewState extends State<ReceiverView> {
   }
 
   _handleText() {
-    debugPrint("*********** The string received : ${textController.text}");
+    debugPrint("[TextController] The string received : ${textController.text}");
   }
 
 
