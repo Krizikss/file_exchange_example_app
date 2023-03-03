@@ -142,9 +142,9 @@ class _SenderViewState extends State<SenderView> {
           break;
       }
     }
-    //Adapt the chunksize to the size of the String
+
     await scheduler.sendData(_textController.text, 1);
-    Fluttertoast.showToast( msg: "File successfully sent!" );
+    Fluttertoast.showToast( msg: "Data successfully sent!" );
   }
 
 }

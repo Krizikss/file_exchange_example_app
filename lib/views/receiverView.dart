@@ -137,7 +137,7 @@ class _ReceiverViewState extends State<ReceiverView> {
       }
     }
     await receiver.receiveData(textController);
-    Fluttertoast.showToast( msg: "File successfully received!" );
+    Fluttertoast.showToast( msg: "Data successfully received!" );
   }
 
 }
